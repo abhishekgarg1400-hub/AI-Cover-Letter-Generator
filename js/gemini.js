@@ -8,38 +8,33 @@ const GeminiAPI = (() => {
   let cachedModel = null;
 
   /**
-   * Dynamically fetch available models from Google AI Studio to find an active model for generateContent
+   * Fetch exact active models list supported by user's API key
    */
-  async function resolveWorkingModel(apiKey) {
-    if (cachedModel) return cachedModel;
-
-    const fallbackModels = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
-
+  async function fetchValidModelsForKey(apiKey) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
       if (res.ok) {
         const data = await res.json();
         const models = data?.models || [];
+        const valid = models
+          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+          .map(m => m.name.replace('models/', ''));
 
-        // Find a model that supports generateContent
-        const suitable = models.find(m => {
-          const name = m.name || '';
-          const supportsGen = m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent');
-          return supportsGen && (name.includes('flash') || name.includes('pro'));
-        });
-
-        if (suitable) {
-          cachedModel = suitable.name.replace('models/', '');
-          console.log(`Auto-detected active Gemini model: ${cachedModel}`);
-          return cachedModel;
+        if (valid.length > 0) {
+          console.log('Discovered models for your API key:', valid);
+          return valid;
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (errData?.error?.message) {
+          throw new GeminiError(`API Key Error: ${errData.error.message}`, 'INVALID_KEY');
         }
       }
     } catch (e) {
-      console.warn('Model list fetch failed, using fallback list');
+      if (e instanceof GeminiError) throw e;
     }
 
-    cachedModel = fallbackModels[0];
-    return cachedModel;
+    return ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
   }
 
   /**
@@ -60,7 +55,7 @@ const GeminiAPI = (() => {
    - **Opening Hook** (1–2 sentences): Grab attention with a specific achievement, passion, or alignment with the company's mission.
    - **Value Proposition** (2–3 short paragraphs): Connect the user's most relevant experience to the job's core requirements. Use quantifiable results where possible (e.g., "improved efficiency by 30%", "reduced costs by ₹2L").
    - **Company Fit** (1 short paragraph): Show genuine interest by referencing a specific product, value, mission statement, or recent news about the company.
-   - **Call to Action** (1 sentence): Politely request an interview or next step.
+   - **Call to Action** (1 sentence): politely request an interview or next step.
 
 3. **Tone & Style Guidelines**:
    - Professional yet warm and confident—sound like a real person, not a robot.
@@ -117,13 +112,6 @@ const GeminiAPI = (() => {
   }
 
   /**
-   * Generate a cover letter using the Gemini API with streaming.
-   * @param {Object} params - { resume, jobDescription, notes, tone }
-   * @param {Function} onChunk - Callback for each text chunk (for streaming effect)
-   * @param {AbortSignal} signal - AbortController signal for cancellation
-   * @returns {Promise<string>} - The full generated cover letter text
-   */
-  /**
    * Process SSE stream response
    */
   async function processStreamResponse(response, onChunk) {
@@ -167,12 +155,12 @@ const GeminiAPI = (() => {
   }
 
   /**
-   * Generate a cover letter using the Gemini API with automatic model & retry fallback.
+   * Generate a cover letter using Gemini API with dynamic model discovery.
    */
   async function generateCoverLetter({ resume, jobDescription, notes, tone }, onChunk, signal) {
     const apiKey = getApiKey();
     if (!apiKey) {
-      throw new GeminiError('API key not found. Please set your Gemini API key.', 'NO_KEY');
+      throw new GeminiError('API key not found. Please set your Gemini API key in settings.', 'NO_KEY');
     }
 
     const systemPrompt = buildSystemPrompt();
@@ -195,20 +183,13 @@ const GeminiAPI = (() => {
       }
     };
 
-    const candidateEndpoints = [
-      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-1.5-flash' },
-      { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'gemini-1.5-flash' },
-      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-2.0-flash-exp' },
-      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-1.5-pro' },
-      { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'gemini-1.5-pro' }
-    ];
-
+    const models = await fetchValidModelsForKey(apiKey);
     let lastStatus = 0;
     let lastErrorMessage = '';
 
-    for (const ep of candidateEndpoints) {
-      const streamUrl = `${ep.base}/${ep.model}:streamGenerateContent?alt=sse&key=${apiKey}`;
-
+    for (const modelName of models) {
+      // 1. Try streaming SSE
+      const streamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
       try {
         let res = await fetch(streamUrl, {
           method: 'POST',
@@ -232,8 +213,8 @@ const GeminiAPI = (() => {
           return await processStreamResponse(res, onChunk);
         }
 
-        // Try standard non-streaming POST if SSE stream returned 404
-        const stdUrl = `${ep.base}/${ep.model}:generateContent?key=${apiKey}`;
+        // 2. Fallback to standard generateContent
+        const stdUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
         let stdRes = await fetch(stdUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -266,6 +247,7 @@ const GeminiAPI = (() => {
           lastErrorMessage = errJson.error.message;
         }
         lastStatus = res.status || stdRes.status;
+
       } catch (err) {
         if (err.name === 'AbortError') {
           throw new GeminiError('Generation cancelled.', 'CANCELLED');
@@ -295,15 +277,7 @@ const GeminiAPI = (() => {
     const apiKey = getApiKey();
     if (!apiKey) return extractKeywordsFallback(jobDescription);
 
-    const candidateModels = [
-      await resolveWorkingModel(apiKey),
-      'gemini-2.0-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro-latest',
-      'gemini-pro',
-      'gemini-1.5-flash'
-    ];
-    const uniqueModels = [...new Set(candidateModels.filter(Boolean))];
+    const models = await fetchValidModelsForKey(apiKey);
 
     const body = {
       contents: [
@@ -325,7 +299,7 @@ ${jobDescription}
       }
     };
 
-    for (const modelName of uniqueModels) {
+    for (const modelName of models) {
       try {
         const url = `${API_BASE}/${modelName}:generateContent?key=${apiKey}`;
         const response = await fetch(url, {
