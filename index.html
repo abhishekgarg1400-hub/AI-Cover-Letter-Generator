@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Generate ATS-optimized, personalized cover letters in seconds using AI. Paste your resume and job description, and get a tailored cover letter instantly.">
+  <meta name="keywords" content="cover letter generator, AI cover letter, ATS optimized, resume, job application, career tools">
+  <meta name="author" content="AI Cover Letter Generator">
+  <meta name="theme-color" content="#7c3aed">
+
+  <title>AI Cover Letter Generator — Craft the Perfect Cover Letter</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
+    <header class="app-header">
+      <div class="header-inner">
+        <a href="#" class="logo">
+          <img src="assets/favicon.svg" alt="Logo" class="logo-icon">
+          <span class="logo-text">CoverCraft AI</span>
+        </a>
+        <div class="header-actions">
+          <button id="theme-toggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle dark/light mode">
+            ☀️
+          </button>
+          <button id="settings-btn" class="settings-btn" title="API Key Settings" aria-label="Settings">
+            ⚙️
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================================================================
+         HERO SECTION
+         ================================================================ -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span class="sparkle">✨</span>
+        Powered by Google Gemini AI
+      </div>
+      <h1>
+        Craft the Perfect<br>
+        <span class="gradient-text">Cover Letter</span>
+      </h1>
+      <p class="hero-subtitle">
+        Paste your resume and job description. Get a tailored, ATS-optimized cover letter in seconds — not hours.
+      </p>
+    </section>
+
+    <!-- ================================================================
+         MAIN CONTENT — SPLIT PANE EDITOR
+         ================================================================ -->
+    <main class="main-content">
+      <div class="editor-grid">
+
+        <!-- ============================================================
+             INPUT PANEL
+             ============================================================ -->
+        <div class="panel input-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <span class="icon">📝</span>
+              Your Details
+            </h2>
+          </div>
+
+          <!-- Resume Input -->
+          <div class="input-group">
+            <label for="resume-input" class="input-label">
+              Resume <span class="required">*</span>
+            </label>
+            <textarea
+              id="resume-input"
+              class="text-input"
+              placeholder="Paste your full resume text here..."
+              rows="8"
+              spellcheck="false"
+            ></textarea>
+            <div class="drop-hint">
+              <span class="icon">📎</span>
+              Drag & drop a .txt file, or paste text directly
+            </div>
+          </div>
+
+          <!-- Job Description Input -->
+          <div class="input-group">
+            <label for="job-desc-input" class="input-label">
+              Job Description <span class="required">*</span>
+            </label>
+            <textarea
+              id="job-desc-input"
+              class="text-input"
+              placeholder="Paste the full job description here..."
+              rows="8"
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <!-- Accordion — Optional Notes -->
+          <div class="accordion">
+            <button
+              id="accordion-trigger"
+              class="accordion-trigger"
+              type="button"
+              aria-expanded="false"
+              aria-controls="accordion-content"
+            >
+              <span>📌 Optional: Add specific notes to personalize</span>
+              <span class="chevron">▼</span>
+            </button>
+            <div id="accordion-content" class="accordion-content" role="region">
+              <div class="accordion-body">
+                <div>
+                  <label for="note-why-role" class="input-label" style="text-transform:none; letter-spacing:0; font-size:0.8rem;">
+                    Why do you want this role / company?
+                  </label>
+                  <input
+                    id="note-why-role"
+                    type="text"
+                    class="note-input"
+                    placeholder='e.g., "I admire their work in renewable energy"'
+                  >
+                </div>
+                <div>
+                  <label for="note-relevant-exp" class="input-label" style="text-transform:none; letter-spacing:0; font-size:0.8rem;">
+                    Most relevant experience to highlight?
+                  </label>
+                  <input
+                    id="note-relevant-exp"
+                    type="text"
+                    class="note-input"
+                    placeholder='e.g., "Led a team of 5 on a cloud migration project"'
+                  >
+                </div>
+                <div>
+                  <label for="note-company-detail" class="input-label" style="text-transform:none; letter-spacing:0; font-size:0.8rem;">
+                    Specific company detail you noticed?
+                  </label>
+                  <input
+                    id="note-company-detail"
+                    type="text"
+                    class="note-input"
+                    placeholder='e.g., "Recently launched an AI-powered product"'
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tone Selector -->
+          <div class="tone-selector">
+            <label class="input-label">Tone</label>
+            <div class="tone-pills">
+              <div class="tone-pill">
+                <input type="radio" name="tone" id="tone-professional" value="professional" checked>
+                <label for="tone-professional">💼 Professional</label>
+              </div>
+              <div class="tone-pill">
+                <input type="radio" name="tone" id="tone-confident" value="confident and assertive">
+                <label for="tone-confident">🎯 Confident</label>
+              </div>
+              <div class="tone-pill">
+                <input type="radio" name="tone" id="tone-friendly" value="professional but friendly and warm">
+                <label for="tone-friendly">😊 Friendly</label>
+              </div>
+              <div class="tone-pill">
+                <input type="radio" name="tone" id="tone-creative" value="creative and energetic, suitable for startups">
+                <label for="tone-creative">🚀 Creative</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Generate Button -->
+          <button id="generate-btn" class="generate-btn" type="button">
+            <span class="btn-spinner"></span>
+            <span class="btn-text">✨ Generate Cover Letter</span>
+            <span class="btn-loading-text">Crafting your letter...</span>
+          </button>
+
+          <!-- Error Message -->
+          <div id="error-message" class="error-message">
+            <span class="error-icon">⚠️</span>
+            <span id="error-text" class="error-text"></span>
+          </div>
+
+          <!-- Keyboard shortcut hint -->
+          <p style="text-align:center; margin-top:12px; font-size:0.72rem; color:var(--text-muted);">
+            Tip: Press <kbd style="padding:2px 6px; border-radius:4px; background:var(--bg-surface); border:1px solid var(--border-default); font-size:0.7rem;">Ctrl</kbd> + <kbd style="padding:2px 6px; border-radius:4px; background:var(--bg-surface); border:1px solid var(--border-default); font-size:0.7rem;">Enter</kbd> to generate
+          </p>
+        </div>
+
+        <!-- ============================================================
+             OUTPUT PANEL
+             ============================================================ -->
+        <div class="panel output-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <span class="icon">📄</span>
+              Cover Letter
+            </h2>
+          </div>
+
+          <!-- Empty State -->
+          <div id="output-empty" class="output-empty">
+            <div class="empty-icon">✉️</div>
+            <h3>Your cover letter will appear here</h3>
+            <p>Fill in your resume and the job description, then click Generate to get started.</p>
+          </div>
+
+          <!-- Skeleton Loading -->
+          <div id="skeleton-container" class="skeleton-container">
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line gap"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line gap"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line gap"></div>
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line gap"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line short"></div>
+          </div>
+
+          <!-- Generated Cover Letter -->
+          <div id="letter-output" class="letter-output">
+            <div
+              id="letter-document"
+              class="letter-document"
+              contenteditable="true"
+              role="textbox"
+              aria-label="Generated cover letter (editable)"
+              spellcheck="true"
+            ></div>
+
+            <!-- Word Count & Stats -->
+            <div class="output-stats">
+              <span id="word-count" class="word-count">0 words</span>
+              <span class="edit-hint">
+                <span>✏️</span> Click to edit
+              </span>
+            </div>
+
+            <!-- ATS Keywords -->
+            <div id="keywords-section" class="keywords-section" style="display:none;">
+              <div class="keywords-header">
+                <span class="keywords-title">
+                  <span>🎯</span> ATS Keywords
+                </span>
+                <span id="keywords-score" class="keywords-score"></span>
+              </div>
+              <div id="keywords-grid" class="keywords-grid"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="output-actions">
+              <button id="copy-btn" class="action-btn" type="button">
+                <span class="icon">📋</span> Copy
+              </button>
+              <button id="download-btn" class="action-btn" type="button">
+                <span class="icon">📄</span> Download PDF
+              </button>
+              <button id="regenerate-btn" class="action-btn primary" type="button">
+                <span class="icon">🔄</span> Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.editor-grid -->
+    </main>
+
+  </div><!-- /.app-container -->
+
+  <!-- ================================================================
+       API KEY MODAL
+       ================================================================ -->
+  <div id="api-key-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <span>🔑</span> API Key Setup
+        </h3>
+        <button id="modal-close" class="modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          This app uses the <strong>Google Gemini API</strong> (free tier) to generate cover letters.
+          Get your free API key from
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
+        </p>
+        <p style="font-size:0.78rem; color:var(--text-muted);">
+          Your key is stored only in your browser's localStorage — it never leaves your device except to call Google's API directly.
+        </p>
+        <div class="api-key-input-group">
+          <input
+            id="api-key-input"
+            type="password"
+            class="api-key-input"
+            placeholder="Paste your Gemini API key here..."
+            spellcheck="false"
+            autocomplete="off"
+          >
+          <button id="toggle-visibility" class="toggle-visibility" type="button" aria-label="Toggle visibility">
+            👁️
+          </button>
+        </div>
+        <div id="api-key-status" class="api-key-status empty">
+          ⚠ No API key set
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="clear-key-btn" class="modal-btn danger" style="display:none;" type="button">
+          Remove Key
+        </button>
+        <button id="save-key-btn" class="modal-btn primary" type="button">
+          Save Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       TOAST CONTAINER
+       ================================================================ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ================================================================
+       SCRIPTS
+       ================================================================ -->
+  <script src="js/gemini.js"></script>
+  <script src="js/pdf-export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
