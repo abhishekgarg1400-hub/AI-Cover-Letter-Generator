@@ -5,7 +5,42 @@
 
 const GeminiAPI = (() => {
   const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-  const MODEL = 'gemini-1.5-flash';
+  let cachedModel = null;
+
+  /**
+   * Dynamically fetch available models from Google AI Studio to find an active model for generateContent
+   */
+  async function resolveWorkingModel(apiKey) {
+    if (cachedModel) return cachedModel;
+
+    const fallbackModels = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (res.ok) {
+        const data = await res.json();
+        const models = data?.models || [];
+
+        // Find a model that supports generateContent
+        const suitable = models.find(m => {
+          const name = m.name || '';
+          const supportsGen = m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent');
+          return supportsGen && (name.includes('flash') || name.includes('pro'));
+        });
+
+        if (suitable) {
+          cachedModel = suitable.name.replace('models/', '');
+          console.log(`Auto-detected active Gemini model: ${cachedModel}`);
+          return cachedModel;
+        }
+      }
+    } catch (e) {
+      console.warn('Model list fetch failed, using fallback list');
+    }
+
+    cachedModel = fallbackModels[0];
+    return cachedModel;
+  }
 
   /**
    * Build the system prompt using the user's refined instructions.
@@ -96,8 +131,9 @@ const GeminiAPI = (() => {
 
     const systemPrompt = buildSystemPrompt();
     const userMessage = buildUserMessage(resume, jobDescription, notes, tone);
+    const activeModel = await resolveWorkingModel(apiKey);
 
-    const url = `${API_BASE}/${MODEL}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const url = `${API_BASE}/${activeModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const body = {
       system_instruction: {
@@ -206,7 +242,8 @@ const GeminiAPI = (() => {
     const apiKey = getApiKey();
     if (!apiKey) return extractKeywordsFallback(jobDescription);
 
-    const url = `${API_BASE}/${MODEL}:generateContent?key=${apiKey}`;
+    const activeModel = await resolveWorkingModel(apiKey);
+    const url = `${API_BASE}/${activeModel}:generateContent?key=${apiKey}`;
 
     const body = {
       contents: [
@@ -342,6 +379,7 @@ ${jobDescription}
     generateCoverLetter,
     extractKeywords,
     matchKeywords,
+    resolveWorkingModel,
     getApiKey,
     setApiKey,
     hasApiKey,

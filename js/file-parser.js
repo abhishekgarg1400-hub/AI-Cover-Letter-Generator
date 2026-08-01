@@ -115,8 +115,9 @@ const FileParser = (() => {
       reader.readAsDataURL(file);
     });
 
+    const activeModel = await GeminiAPI.resolveWorkingModel(apiKey);
     const mimeType = file.type || 'image/jpeg';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
     const body = {
       contents: [
