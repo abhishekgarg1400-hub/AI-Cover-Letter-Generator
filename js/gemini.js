@@ -13,28 +13,27 @@ const GeminiAPI = (() => {
   async function fetchValidModelsForKey(apiKey) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-      if (res.ok) {
-        const data = await res.json();
-        const models = data?.models || [];
-        const valid = models
-          .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-          .map(m => m.name.replace('models/', ''));
+      const data = await res.json().catch(() => ({}));
 
-        if (valid.length > 0) {
-          console.log('Discovered models for your API key:', valid);
-          return valid;
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        if (errData?.error?.message) {
-          throw new GeminiError(`API Key Error: ${errData.error.message}`, 'INVALID_KEY');
-        }
+      if (!res.ok) {
+        const msg = data?.error?.message || 'Invalid API Key or API not enabled.';
+        throw new GeminiError(`API Key Error (${res.status}): ${msg}`, 'INVALID_KEY');
+      }
+
+      const models = data?.models || [];
+      const valid = models
+        .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''));
+
+      if (valid.length > 0) {
+        console.log('Discovered models for your API key:', valid);
+        return valid;
       }
     } catch (e) {
       if (e instanceof GeminiError) throw e;
     }
 
-    return ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    return ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
   }
 
   /**
