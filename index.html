@@ -76,13 +76,13 @@
           <!-- Resume Input -->
           <div class="input-group">
             <div class="input-label-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm);">
-              <label for="resume-input" class="input-label" style="margin-bottom: 0;">
+              <span class="input-label" style="margin-bottom: 0;">
                 Resume <span class="required">*</span>
-              </label>
-              <button id="upload-file-btn" class="upload-file-btn" type="button" style="padding: 4px 10px; font-size: 0.78rem; border-radius: var(--radius-sm); border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              </span>
+              <label for="resume-file-input" class="upload-file-btn" style="padding: 5px 12px; font-size: 0.78rem; border-radius: var(--radius-sm); border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; user-select: none;">
                 📁 Upload File (.pdf, .docx, .png, .jpg)
-              </button>
-              <input type="file" id="resume-file-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.txt,.md" style="display:none;">
+              </label>
+              <input type="file" id="resume-file-input" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp,.txt,.md" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;">
             </div>
             <textarea
               id="resume-input"
@@ -348,9 +348,9 @@
   <!-- ================================================================
        SCRIPTS
        ================================================================ -->
-  <script src="js/gemini.js?v=8.0"></script>
-  <script src="js/pdf-export.js?v=8.0"></script>
-  <script src="js/file-parser.js?v=8.0"></script>
-  <script src="js/app.js?v=8.0"></script>
+  <script src="js/gemini.js?v=9.0"></script>
+  <script src="js/pdf-export.js?v=9.0"></script>
+  <script src="js/file-parser.js?v=9.0"></script>
+  <script src="js/app.js?v=9.0"></script>
 </body>
 </html>

@@ -188,18 +188,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // FILE UPLOAD & DRAG-AND-DROP — Multi-Format Support (.pdf, .docx, images, .txt)
   // ========================================================================
 
-  const uploadFileBtn = $('#upload-file-btn');
   const resumeFileInput = $('#resume-file-input');
 
-  if (uploadFileBtn && resumeFileInput) {
-    uploadFileBtn.addEventListener('click', () => {
-      resumeFileInput.click();
-    });
-
+  if (resumeFileInput) {
     resumeFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files && e.target.files[0];
       if (file) handleProcessResumeFile(file);
-      // Reset input so same file can be re-uploaded if needed
       resumeFileInput.value = '';
     });
   }
@@ -219,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   resumeInput.addEventListener('drop', (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (file) handleProcessResumeFile(file);
   });
 
