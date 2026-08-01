@@ -15,14 +15,24 @@ const PDFExport = (() => {
       return;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js';
+      script.src = 'js/html2pdf.bundle.min.js';
       script.onload = () => {
         html2pdfLoaded = true;
         resolve();
       };
-      script.onerror = () => reject(new Error('Failed to load PDF library. Please check your internet connection.'));
+      script.onerror = () => {
+        // Fall back to CDN if local bundle fails
+        const cdnScript = document.createElement('script');
+        cdnScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js';
+        cdnScript.onload = () => {
+          html2pdfLoaded = true;
+          resolve();
+        };
+        cdnScript.onerror = () => resolve(); // Resolve to allow native window.print() fallback
+        document.head.appendChild(cdnScript);
+      };
       document.head.appendChild(script);
     });
   }
@@ -33,6 +43,12 @@ const PDFExport = (() => {
    */
   async function downloadPDF(coverLetterText) {
     await loadLibrary();
+
+    if (!window.html2pdf) {
+      console.warn('html2pdf library unavailable, opening native print dialog as fallback');
+      window.print();
+      return true;
+    }
 
     // Create a clean, styled container for the PDF attached off-screen
     const container = document.createElement('div');
