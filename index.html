@@ -13,6 +13,15 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 
+  <!-- Document Parsing Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -348,9 +357,9 @@
   <!-- ================================================================
        SCRIPTS
        ================================================================ -->
-  <script src="js/gemini.js?v=9.0"></script>
-  <script src="js/pdf-export.js?v=9.0"></script>
-  <script src="js/file-parser.js?v=9.0"></script>
-  <script src="js/app.js?v=9.0"></script>
+  <script src="js/gemini.js?v=10.0"></script>
+  <script src="js/pdf-export.js?v=10.0"></script>
+  <script src="js/file-parser.js?v=10.0"></script>
+  <script src="js/app.js?v=10.0"></script>
 </body>
 </html>

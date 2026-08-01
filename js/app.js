@@ -221,7 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`Parsing ${file.name}...`, 'info');
     try {
       const text = await FileParser.parseFile(file);
+      if (!text || !text.trim()) {
+        throw new Error(`No text could be extracted from ${file.name}.`);
+      }
       resumeInput.value = text;
+      resumeInput.dispatchEvent(new Event('input', { bubbles: true }));
       showToast(`Successfully extracted text from ${file.name}`, 'success');
       resumeInput.scrollTop = 0;
     } catch (err) {
