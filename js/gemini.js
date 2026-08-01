@@ -197,6 +197,7 @@ const GeminiAPI = (() => {
 
     const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
     let lastStatus = 0;
+    let lastErrorMessage = '';
 
     for (const modelName of modelsToTry) {
       const streamUrl = `${API_BASE}/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
@@ -254,6 +255,10 @@ const GeminiAPI = (() => {
           }
         }
 
+        const errJson = await (res.ok ? stdRes : res).json().catch(() => ({}));
+        if (errJson?.error?.message) {
+          lastErrorMessage = errJson.error.message;
+        }
         lastStatus = res.status || stdRes.status;
       } catch (err) {
         if (err.name === 'AbortError') {
@@ -264,12 +269,16 @@ const GeminiAPI = (() => {
 
     if (lastStatus === 429) {
       throw new GeminiError(
-        'Google API free rate limit reached (15 requests/min). Please wait 15-20 seconds and click Generate again.',
+        'Google API rate limit reached (15 requests/min). Please wait 15-20 seconds and click Generate again.',
         'RATE_LIMIT'
       );
     }
 
-    throw new GeminiError('Failed to generate cover letter. Please verify your API key and network connection.', 'API_ERROR');
+    if (lastErrorMessage) {
+      throw new GeminiError(`API Error (${lastStatus}): ${lastErrorMessage}`, 'API_ERROR');
+    }
+
+    throw new GeminiError('Failed to generate cover letter. Please check your Gemini API key in settings.', 'API_ERROR');
   }
 
   /**
