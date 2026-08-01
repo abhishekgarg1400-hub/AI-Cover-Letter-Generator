@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Actions
   const copyBtn = $('#copy-btn');
   const downloadBtn = $('#download-btn');
+  const printBtn = $('#print-btn');
   const regenerateBtn = $('#regenerate-btn');
 
   // Modal
@@ -466,6 +467,13 @@ document.addEventListener('DOMContentLoaded', () => {
       downloadBtn.innerHTML = '<span class="icon">📄</span> Download PDF';
     }
   });
+
+  // Print / Save as PDF
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
 
   // Regenerate
   regenerateBtn.addEventListener('click', () => {
