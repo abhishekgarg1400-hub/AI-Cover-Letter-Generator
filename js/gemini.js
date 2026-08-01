@@ -5,7 +5,7 @@
 
 const GeminiAPI = (() => {
   const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-  const MODEL = 'gemini-2.5-flash';
+  const MODEL = 'gemini-1.5-flash';
 
   /**
    * Build the system prompt using the user's refined instructions.
