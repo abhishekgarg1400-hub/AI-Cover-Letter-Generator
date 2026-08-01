@@ -185,8 +185,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ========================================================================
-  // DRAG & DROP — Resume Input
+  // FILE UPLOAD & DRAG-AND-DROP — Multi-Format Support (.pdf, .docx, images, .txt)
   // ========================================================================
+
+  const uploadFileBtn = $('#upload-file-btn');
+  const resumeFileInput = $('#resume-file-input');
+
+  if (uploadFileBtn && resumeFileInput) {
+    uploadFileBtn.addEventListener('click', () => {
+      resumeFileInput.click();
+    });
+
+    resumeFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleProcessResumeFile(file);
+      // Reset input so same file can be re-uploaded if needed
+      resumeFileInput.value = '';
+    });
+  }
 
   ['dragenter', 'dragover'].forEach(evt => {
     resumeInput.addEventListener(evt, (e) => {
@@ -204,19 +220,21 @@ document.addEventListener('DOMContentLoaded', () => {
   resumeInput.addEventListener('drop', (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (!file) return;
-
-    if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        resumeInput.value = ev.target.result;
-        showToast(`Loaded: ${file.name}`, 'success');
-      };
-      reader.readAsText(file);
-    } else {
-      showToast('Please drop a .txt or .md file', 'error');
-    }
+    if (file) handleProcessResumeFile(file);
   });
+
+  async function handleProcessResumeFile(file) {
+    showToast(`Parsing ${file.name}...`, 'info');
+    try {
+      const text = await FileParser.parseFile(file);
+      resumeInput.value = text;
+      showToast(`Successfully extracted text from ${file.name}`, 'success');
+      resumeInput.scrollTop = 0;
+    } catch (err) {
+      console.error('File parsing error:', err);
+      showToast(err.message || `Failed to process ${file.name}`, 'error');
+    }
+  }
 
   // ========================================================================
   // GENERATE COVER LETTER
@@ -453,8 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    let icon = '✓';
+    if (type === 'error') icon = '✕';
+    if (type === 'info') icon = '⏳';
     toast.innerHTML = `
-      <span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>
+      <span class="toast-icon">${icon}</span>
       <span>${escapeHtml(message)}</span>
     `;
     toastContainer.appendChild(toast);

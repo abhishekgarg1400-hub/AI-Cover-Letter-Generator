@@ -1207,12 +1207,30 @@ a:hover {
   color: var(--success);
 }
 
+.toast.info {
+  border-color: var(--border-accent);
+}
+
+.toast.info .toast-icon {
+  color: var(--accent-tertiary);
+}
+
 .toast.error {
   border-color: rgba(239, 68, 68, 0.3);
 }
 
 .toast.error .toast-icon {
   color: var(--error);
+}
+
+.upload-file-btn {
+  transition: all var(--transition-fast);
+}
+
+.upload-file-btn:hover {
+  background: var(--bg-surface-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-accent) !important;
 }
 
 .toast-icon {

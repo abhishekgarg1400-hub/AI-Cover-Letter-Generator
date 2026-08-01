@@ -6,6 +6,8 @@ CoverCraft AI is a modern, single-page web application designed to generate cust
 
 ## 🌟 Key Features
 
+- 📁 **Multi-Format Resume Upload**: Upload or drag-and-drop resumes in **PDF (`.pdf`)**, **Word (`.docx`)**, **Images (`.png`, `.jpg`, `.jpeg`, `.webp`)**, and **Text (`.txt`, `.md`)** formats.
+- 👁️ **AI Multimodal Vision OCR**: Automatically transcribes and analyzes text from resume image files.
 - 🤖 **AI-Powered Generation**: Generates tailored cover letters using Google Gemini 2.5 Flash.
 - ⚡ **Real-Time Streaming**: Streamed response output with an interactive typing animation.
 - 🎯 **ATS Keyword Matching**: Real-time extraction of hard/soft skills with visual match badges and match score percentage.
