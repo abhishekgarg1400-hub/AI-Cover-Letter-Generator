@@ -303,7 +303,10 @@ ${jobDescription}
           body: JSON.stringify(body)
         });
 
-        if (response.status === 404) continue;
+        if (response.status === 429 || response.status === 404) {
+          // If rate limited or 404 on keywords, instantly use smart regex fallback to save quota
+          return extractKeywordsFallback(jobDescription);
+        }
         if (!response.ok) continue;
 
         const data = await response.json();
@@ -315,7 +318,8 @@ ${jobDescription}
           return keywords.filter(k => typeof k === 'string').map(k => k.trim());
         }
       } catch {
-        // Try next candidate
+        // Fall back to regex
+        return extractKeywordsFallback(jobDescription);
       }
     }
 
