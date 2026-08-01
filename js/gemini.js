@@ -195,12 +195,19 @@ const GeminiAPI = (() => {
       }
     };
 
-    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    const candidateEndpoints = [
+      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-1.5-flash' },
+      { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'gemini-1.5-flash' },
+      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-2.0-flash-exp' },
+      { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'gemini-1.5-pro' },
+      { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'gemini-1.5-pro' }
+    ];
+
     let lastStatus = 0;
     let lastErrorMessage = '';
 
-    for (const modelName of modelsToTry) {
-      const streamUrl = `${API_BASE}/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    for (const ep of candidateEndpoints) {
+      const streamUrl = `${ep.base}/${ep.model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
       try {
         let res = await fetch(streamUrl, {
@@ -210,7 +217,6 @@ const GeminiAPI = (() => {
           signal
         });
 
-        // If rate limited (429), wait 4 seconds and auto-retry
         if (res.status === 429) {
           lastStatus = 429;
           await new Promise(r => setTimeout(r, 4000));
@@ -226,8 +232,8 @@ const GeminiAPI = (() => {
           return await processStreamResponse(res, onChunk);
         }
 
-        // If 404 or stream failed, try standard generateContent (non-streaming)
-        const stdUrl = `${API_BASE}/${modelName}:generateContent?key=${apiKey}`;
+        // Try standard non-streaming POST if SSE stream returned 404
+        const stdUrl = `${ep.base}/${ep.model}:generateContent?key=${apiKey}`;
         let stdRes = await fetch(stdUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
