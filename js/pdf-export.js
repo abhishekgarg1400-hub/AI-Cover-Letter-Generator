@@ -7,23 +7,17 @@ const PDFExport = (() => {
   let html2pdfLoaded = false;
 
   /**
-   * Ensure html2pdf.js is loaded from CDN.
+   * Ensure html2pdf.js is loaded.
    */
   async function loadLibrary() {
-    if (html2pdfLoaded && window.html2pdf) return;
+    if (window.html2pdf) {
+      html2pdfLoaded = true;
+      return;
+    }
 
     return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if (window.html2pdf) {
-        html2pdfLoaded = true;
-        resolve();
-        return;
-      }
-
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js';
-      script.integrity = 'sha512-MpDFImlYBSenMkNnFPMIiPJKIyMwFKHLBmQKFHAq8DS3Rq4IVzSaRkBGjLjmhcUgDJkr7eLOCPbG22PnnuB2g==';
-      script.crossOrigin = 'anonymous';
       script.onload = () => {
         html2pdfLoaded = true;
         resolve();

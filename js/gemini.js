@@ -60,7 +60,7 @@ const GeminiAPI = (() => {
    - Professional yet warm and confident—sound like a real person, not a robot.
    - Avoid clichés and generic phrases like "I am a hard worker" or "I am a team player."
    - Match the tone to the industry (e.g., startup = energetic, finance = polished, tech = confident).
-   - Keep it concise: 250–350 words maximum.
+   - **STRICT WORD COUNT TARGET**: Keep the entire cover letter strictly between 250 and 320 words total. Do NOT exceed 350 words under any circumstances.
 
 4. **ATS Optimization Requirements**:
    - Naturally include 5–8 keywords from the job description (skills, tools, certifications, methodologies).
@@ -70,16 +70,16 @@ const GeminiAPI = (() => {
 5. **Safety & Accuracy Rules** (Critical):
    - **Do NOT invent** any experiences, skills, achievements, dates, or qualifications not explicitly stated in the resume.
    - **Do NOT fabricate** company details, product names, or recent news unless provided in the job description or user notes.
-   - If the resume lacks information needed for a strong letter, highlight this gap in your internal reasoning but still generate the best possible letter with available data.
-   - If conflicting information exists (e.g., resume says 2 years experience, job requires 5), do not lie—focus on transferable skills and enthusiasm to learn.
+   - If the resume lacks information needed for a strong letter, focus on transferable skills and enthusiasm to learn.
 
 6. **Output Format**:
-   - Return **ONLY** the cover letter text.
+   - Return **ONLY** the raw cover letter text.
+   - Do NOT wrap in markdown code blocks (do NOT use \`\`\` or \`\`\`markdown).
+   - Do NOT include any preambles (e.g. "Here is your cover letter:"), notes, or meta-commentary.
    - Properly formatted with:
      - Salutation (e.g., "Dear Hiring Manager,")
-     - 3–4 short paragraphs (no bullet points in the final letter)
-     - Professional closing (e.g., "Sincerely, [User's Name]")
-   - Do NOT include explanations, notes, or meta-commentary.`;
+     - 3–4 short paragraphs
+     - Professional closing (e.g., "Sincerely, [User's Name]")`;
   }
 
   /**
@@ -159,7 +159,18 @@ const GeminiAPI = (() => {
       throw new GeminiError('No content was generated. Please try again.', 'EMPTY_RESPONSE');
     }
 
-    return fullText.trim();
+    return cleanGeneratedText(fullText);
+  }
+
+  /**
+   * Post-process generated text to remove code fences or intro chatter
+   */
+  function cleanGeneratedText(text) {
+    if (!text) return '';
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+    cleaned = cleaned.replace(/^(Here is|Here's|Below is|Sure,|Certainly,)[^\n]*\n+/i, '').trim();
+    return cleaned;
   }
 
   /**
@@ -245,8 +256,9 @@ const GeminiAPI = (() => {
           const data = await stdRes.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
           if (text) {
-            if (onChunk) onChunk(text);
-            return text.trim();
+            const cleaned = cleanGeneratedText(text);
+            if (onChunk) onChunk(cleaned);
+            return cleaned;
           }
         }
 
