@@ -123,98 +123,10 @@ const GeminiAPI = (() => {
    * @param {AbortSignal} signal - AbortController signal for cancellation
    * @returns {Promise<string>} - The full generated cover letter text
    */
-  async function generateCoverLetter({ resume, jobDescription, notes, tone }, onChunk, signal) {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new GeminiError('API key not found. Please set your Gemini API key.', 'NO_KEY');
-    }
-
-    const systemPrompt = buildSystemPrompt();
-    const userMessage = buildUserMessage(resume, jobDescription, notes, tone);
-    const candidateModels = [
-      await resolveWorkingModel(apiKey),
-      'gemini-2.0-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro-latest',
-      'gemini-pro',
-      'gemini-1.5-flash'
-    ];
-    const uniqueModels = [...new Set(candidateModels.filter(Boolean))];
-
-    const body = {
-      system_instruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage }]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 2048
-      }
-    };
-
-    let response = null;
-
-    for (const modelName of uniqueModels) {
-      const url = `${API_BASE}/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal
-        });
-
-        if (res.status === 404) {
-          console.warn(`Model '${modelName}' returned 404, retrying with next candidate...`);
-          continue;
-        }
-
-        response = res;
-        cachedModel = modelName;
-        break;
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          throw new GeminiError('Generation cancelled.', 'CANCELLED');
-        }
-      }
-    }
-
-    if (!response) {
-      throw new GeminiError('Unable to connect to Gemini API models. Please check your internet connection or API key.', 'NETWORK');
-    }
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const status = response.status;
-
-      if (status === 429) {
-        throw new GeminiError(
-          'Rate limit exceeded. Please wait a moment and try again.',
-          'RATE_LIMIT'
-        );
-      } else if (status === 400) {
-        const msg = errorData?.error?.message || 'Invalid request.';
-        throw new GeminiError(`Bad request: ${msg}`, 'BAD_REQUEST');
-      } else if (status === 403) {
-        throw new GeminiError(
-          'Invalid API key. Please check your Gemini API key in settings.',
-          'INVALID_KEY'
-        );
-      } else {
-        throw new GeminiError(
-          `API error (${status}): ${errorData?.error?.message || 'Unknown error'}`,
-          'API_ERROR'
-        );
-      }
-    }
-
-    // Stream the response using SSE
+  /**
+   * Process SSE stream response
+   */
+  async function processStreamResponse(response, onChunk) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
@@ -225,10 +137,8 @@ const GeminiAPI = (() => {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
-      // Process SSE lines
       const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep the incomplete line in buffer
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -254,6 +164,112 @@ const GeminiAPI = (() => {
     }
 
     return fullText.trim();
+  }
+
+  /**
+   * Generate a cover letter using the Gemini API with automatic model & retry fallback.
+   */
+  async function generateCoverLetter({ resume, jobDescription, notes, tone }, onChunk, signal) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      throw new GeminiError('API key not found. Please set your Gemini API key.', 'NO_KEY');
+    }
+
+    const systemPrompt = buildSystemPrompt();
+    const userMessage = buildUserMessage(resume, jobDescription, notes, tone);
+
+    const body = {
+      system_instruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userMessage }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.9,
+        maxOutputTokens: 2048
+      }
+    };
+
+    const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    let lastStatus = 0;
+
+    for (const modelName of modelsToTry) {
+      const streamUrl = `${API_BASE}/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+      try {
+        let res = await fetch(streamUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal
+        });
+
+        // If rate limited (429), wait 4 seconds and auto-retry
+        if (res.status === 429) {
+          lastStatus = 429;
+          await new Promise(r => setTimeout(r, 4000));
+          res = await fetch(streamUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal
+          });
+        }
+
+        if (res.ok) {
+          return await processStreamResponse(res, onChunk);
+        }
+
+        // If 404 or stream failed, try standard generateContent (non-streaming)
+        const stdUrl = `${API_BASE}/${modelName}:generateContent?key=${apiKey}`;
+        let stdRes = await fetch(stdUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal
+        });
+
+        if (stdRes.status === 429) {
+          lastStatus = 429;
+          await new Promise(r => setTimeout(r, 4000));
+          stdRes = await fetch(stdUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal
+          });
+        }
+
+        if (stdRes.ok) {
+          const data = await stdRes.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (text) {
+            if (onChunk) onChunk(text);
+            return text.trim();
+          }
+        }
+
+        lastStatus = res.status || stdRes.status;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          throw new GeminiError('Generation cancelled.', 'CANCELLED');
+        }
+      }
+    }
+
+    if (lastStatus === 429) {
+      throw new GeminiError(
+        'Google API free rate limit reached (15 requests/min). Please wait 15-20 seconds and click Generate again.',
+        'RATE_LIMIT'
+      );
+    }
+
+    throw new GeminiError('Failed to generate cover letter. Please verify your API key and network connection.', 'API_ERROR');
   }
 
   /**
