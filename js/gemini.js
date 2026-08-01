@@ -119,6 +119,24 @@ const GeminiAPI = (() => {
     let fullText = '';
     let buffer = '';
 
+    const parseLine = (line) => {
+      if (line.startsWith('data: ')) {
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr || jsonStr === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            fullText += text;
+            if (onChunk) onChunk(text);
+          }
+        } catch {
+          // Skip malformed JSON chunks
+        }
+      }
+    };
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -128,22 +146,13 @@ const GeminiAPI = (() => {
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr || jsonStr === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) {
-              fullText += text;
-              if (onChunk) onChunk(text);
-            }
-          } catch {
-            // Skip malformed JSON chunks
-          }
-        }
+        parseLine(line);
       }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      parseLine(buffer.trim());
     }
 
     if (!fullText.trim()) {
@@ -308,7 +317,6 @@ ${jobDescription}
         });
 
         if (response.status === 429 || response.status === 404) {
-          // If rate limited or 404 on keywords, instantly use smart regex fallback to save quota
           return extractKeywordsFallback(jobDescription);
         }
         if (!response.ok) continue;
@@ -322,7 +330,6 @@ ${jobDescription}
           return keywords.filter(k => typeof k === 'string').map(k => k.trim());
         }
       } catch {
-        // Fall back to regex
         return extractKeywordsFallback(jobDescription);
       }
     }
@@ -352,12 +359,12 @@ ${jobDescription}
     ];
 
     const found = [];
-    const textLower = text.toLowerCase();
 
     for (const keyword of commonKeywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      const startBoundary = /^\w/.test(keyword) ? '\\b' : '';
+      const endBoundary = /\w$/.test(keyword) ? '\\b' : '';
+      const regex = new RegExp(`${startBoundary}${keyword}${endBoundary}`, 'i');
       if (regex.test(text)) {
-        // Get the original casing from the text
         const match = text.match(regex);
         if (match) found.push(match[0]);
       }

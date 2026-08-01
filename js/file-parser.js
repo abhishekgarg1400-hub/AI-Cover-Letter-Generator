@@ -53,7 +53,7 @@ const FileParser = (() => {
 
     if (window.pdfjsLib) {
       try {
-        const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+        const loadingTask = window.pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
         const pdf = await loadingTask.promise;
         let fullText = '';
 
@@ -108,7 +108,7 @@ const FileParser = (() => {
   }
 
   /**
-   * Extract text from Image file using Gemini Vision API
+   * Extract text from Image file using Gemini Vision API with model fallback
    */
   async function parseImageFile(file) {
     const apiKey = GeminiAPI.getApiKey();
@@ -127,47 +127,62 @@ const FileParser = (() => {
       reader.readAsDataURL(file);
     });
 
-    let activeModel = 'gemini-1.5-flash';
+    let mimeType = file.type;
+    if (!mimeType || !mimeType.startsWith('image/')) {
+      const ext = (file.name || '').split('.').pop().toLowerCase();
+      if (ext === 'png') mimeType = 'image/png';
+      else if (ext === 'webp') mimeType = 'image/webp';
+      else mimeType = 'image/jpeg';
+    }
+
+    let models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
     if (GeminiAPI.fetchValidModelsForKey) {
       try {
-        const models = await GeminiAPI.fetchValidModelsForKey(apiKey);
-        if (models && models.length > 0) activeModel = models[0];
+        const fetched = await GeminiAPI.fetchValidModelsForKey(apiKey);
+        if (fetched && fetched.length > 0) models = fetched;
       } catch (e) {}
     }
 
-    const mimeType = file.type || 'image/jpeg';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
+    let lastError = null;
+    for (const modelName of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        const body = {
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: 'Extract and transcribe all text from this resume image. Output only the verbatim text.' },
+                { inlineData: { mimeType: mimeType, data: base64Data } }
+              ]
+            }
+          ],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        };
 
-    const body = {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: 'Extract and transcribe all text from this resume image. Output only the verbatim text.' },
-            { inlineData: { mimeType: mimeType, data: base64Data } }
-          ]
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          lastError = errData?.error?.message || `HTTP ${response.status}`;
+          continue;
         }
-      ],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-    };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to process image resume with AI. Check your API key and connection.');
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim()) {
+          return text.trim();
+        }
+      } catch (e) {
+        lastError = e.message;
+      }
     }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text || !text.trim()) {
-      throw new Error('Could not extract legible text from this image.');
-    }
-
-    return text.trim();
+    throw new Error(`Failed to extract text from image: ${lastError || 'Unreadable image or API error.'}`);
   }
 
   /**

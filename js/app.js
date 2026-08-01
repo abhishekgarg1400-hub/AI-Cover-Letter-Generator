@@ -290,10 +290,15 @@ document.addEventListener('DOMContentLoaded', () => {
       // Generate the cover letter with streaming
       letterDocument.textContent = '';
       letterDocument.classList.add('typing-cursor');
+      let isFirstChunk = true;
 
       const fullText = await GeminiAPI.generateCoverLetter(
         { resume, jobDescription: jobDesc, notes, tone },
         (chunk) => {
+          if (isFirstChunk) {
+            setOutputState('letter');
+            isFirstChunk = false;
+          }
           // Streaming callback — append each chunk
           letterDocument.textContent += chunk;
           updateWordCount(letterDocument.textContent);
@@ -391,12 +396,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderKeywords(matchedKeywords) {
     keywordsGrid.innerHTML = '';
+    if (!matchedKeywords || matchedKeywords.length === 0) {
+      keywordsSection.style.display = 'none';
+      return;
+    }
+
     const matchedCount = matchedKeywords.filter(k => k.matched).length;
     const total = matchedKeywords.length;
-    const percentage = Math.round((matchedCount / total) * 100);
+    const percentage = total > 0 ? Math.round((matchedCount / total) * 100) : 0;
 
     // Score badge
-    keywordsScore.textContent = `${matchedCount}/${total} matched`;
+    keywordsScore.textContent = `${matchedCount}/${total} matched (${percentage}%)`;
     keywordsScore.classList.remove('high', 'medium', 'low');
     if (percentage >= 70) keywordsScore.classList.add('high');
     else if (percentage >= 40) keywordsScore.classList.add('medium');
