@@ -419,7 +419,7 @@ ${jobDescription}
     generateCoverLetter,
     extractKeywords,
     matchKeywords,
-    resolveWorkingModel,
+    fetchValidModelsForKey,
     getApiKey,
     setApiKey,
     hasApiKey,
