@@ -131,9 +131,15 @@ const GeminiAPI = (() => {
 
     const systemPrompt = buildSystemPrompt();
     const userMessage = buildUserMessage(resume, jobDescription, notes, tone);
-    const activeModel = await resolveWorkingModel(apiKey);
-
-    const url = `${API_BASE}/${activeModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const candidateModels = [
+      await resolveWorkingModel(apiKey),
+      'gemini-2.0-flash',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-pro-latest',
+      'gemini-pro',
+      'gemini-1.5-flash'
+    ];
+    const uniqueModels = [...new Set(candidateModels.filter(Boolean))];
 
     const body = {
       system_instruction: {
@@ -152,19 +158,35 @@ const GeminiAPI = (() => {
       }
     };
 
-    let response;
-    try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal
-      });
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        throw new GeminiError('Generation cancelled.', 'CANCELLED');
+    let response = null;
+
+    for (const modelName of uniqueModels) {
+      const url = `${API_BASE}/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal
+        });
+
+        if (res.status === 404) {
+          console.warn(`Model '${modelName}' returned 404, retrying with next candidate...`);
+          continue;
+        }
+
+        response = res;
+        cachedModel = modelName;
+        break;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          throw new GeminiError('Generation cancelled.', 'CANCELLED');
+        }
       }
-      throw new GeminiError('Network error. Please check your internet connection.', 'NETWORK');
+    }
+
+    if (!response) {
+      throw new GeminiError('Unable to connect to Gemini API models. Please check your internet connection or API key.', 'NETWORK');
     }
 
     if (!response.ok) {
@@ -242,8 +264,15 @@ const GeminiAPI = (() => {
     const apiKey = getApiKey();
     if (!apiKey) return extractKeywordsFallback(jobDescription);
 
-    const activeModel = await resolveWorkingModel(apiKey);
-    const url = `${API_BASE}/${activeModel}:generateContent?key=${apiKey}`;
+    const candidateModels = [
+      await resolveWorkingModel(apiKey),
+      'gemini-2.0-flash',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-pro-latest',
+      'gemini-pro',
+      'gemini-1.5-flash'
+    ];
+    const uniqueModels = [...new Set(candidateModels.filter(Boolean))];
 
     const body = {
       contents: [
@@ -265,26 +294,29 @@ ${jobDescription}
       }
     };
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+    for (const modelName of uniqueModels) {
+      try {
+        const url = `${API_BASE}/${modelName}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
 
-      if (!response.ok) return extractKeywordsFallback(jobDescription);
+        if (response.status === 404) continue;
+        if (!response.ok) continue;
 
-      const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      // Extract JSON array from response
-      const match = text.match(/\[[\s\S]*?\]/);
-      if (match) {
-        const keywords = JSON.parse(match[0]);
-        return keywords.filter(k => typeof k === 'string').map(k => k.trim());
+        const match = text.match(/\[[\s\S]*?\]/);
+        if (match) {
+          const keywords = JSON.parse(match[0]);
+          return keywords.filter(k => typeof k === 'string').map(k => k.trim());
+        }
+      } catch {
+        // Try next candidate
       }
-    } catch {
-      // Fall through to fallback
     }
 
     return extractKeywordsFallback(jobDescription);
